@@ -1,7 +1,11 @@
-name: main
+name: charts
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - "charts/**"
+      - ".github/workflows/charts.yaml"
 env:
   HELM_VERSION: "3.10.2"
   GOOGLE_REGISTRY: "europe-north1-docker.pkg.dev"
