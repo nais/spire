@@ -16,7 +16,7 @@ jobs:
     outputs:
       matrix: ${{ steps.changed-charts.outputs.matrix }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
       - name: Identify Charts
         id: changed-charts
         run: |-
@@ -49,11 +49,11 @@ jobs:
       matrix:
         chart: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
 
       - id: "auth"
         name: "Authenticate to Google Cloud"
-        uses: "google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193" # ratchet:google-github-actions/auth@v3.0.0
+        uses: "google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093" # ratchet:google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: "gh-spire@nais-io.iam.gserviceaccount.com"
@@ -99,7 +99,7 @@ jobs:
       matrix:
         chart: ${{ fromJson(needs.setup.outputs.matrix) }}
     steps:
-      - uses: nais/fasit-deploy@v3 # ratchet:nais/fasit-deploy@v3
+      - uses: nais/fasit-deploy@6e5772c21e82cb101537dd5e3ce78d70e2ae6402 # ratchet:nais/fasit-deploy@v3
         with:
           chart: oci://${{ env.GOOGLE_REGISTRY }}/nais-io/nais/feature/${{ matrix.chart.name }}
           version: ${{ matrix.chart.version }}
