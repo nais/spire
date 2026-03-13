@@ -104,3 +104,4 @@ jobs:
           chart: oci://${{ env.GOOGLE_REGISTRY }}/nais-io/nais/feature/${{ matrix.chart.name }}
           version: ${{ matrix.chart.version }}
           target: '{"tenant":"dev-nais"}'
+          skip-ci: true
