@@ -1,0 +1,60 @@
+global:
+  spire:
+    caSubject:
+      country: "NO"
+      organization: nais
+      commonName: # spire.dev-nais.nais.io; mapped by fasit
+    clusterName: management
+    ingressControllerType: "other"
+    jwtIssuer: # spire.dev-nais.cloud.nais.io; mapped by fasit
+    namespaces:
+      create: false
+      system:
+        name: spire-system
+      server:
+        name: spire-system
+    recommendations:
+      enabled: true
+      strictMode: false # this checks for unset values; ignore for now as it doesn't work through subcharts
+      priorityClassName: false # doesn't work right now "Error creating: insufficient quota to match these scopes: [{PriorityClass In [system-node-critical system-cluster-critical]}] "
+    trustDomain: # dev-nais.cloud.nais.io; mapped by fasit
+upstream-spire:
+  spiffe-oidc-discovery-provider:
+    ingress:
+      enabled: true
+      className: nais-ingress
+      host: # spire.dev-nais.cloud.nais.io; mapped by fasit
+    tls:
+      spire:
+        enabled: false
+
+  spire-server:
+    autoscaling:
+      enabled: true
+    dataStore:
+      sql:
+        databaseType: postgres
+        databaseName: app
+        host: "spire.pg-spire-system"
+        port: 5432
+        username: app_owner_user
+        externalSecret:
+          enabled: true
+          name: app-owner-user.spire.credentials.postgresql.acid.zalan.do
+          key: "password"
+    kind: deployment
+    podAnnotations:
+      reloader.stakater.com/auto: "true"
+    tornjak:
+      enabled: true
+
+  tornjak-frontend:
+    enabled: true
+    apiServerURL: http://localhost:10000
+
+apiServerCIDR: # x.x.x.x/32; mapped by fasit
+projectID: # nais-management-7178; mapped by fasit
+
+database:
+  enabled: true
+  replicas: 1

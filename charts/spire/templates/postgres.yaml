@@ -1,0 +1,52 @@
+{{ if .Values.database.enabled }}
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: {{ include "spire.fullname" . }}
+  namespace: pg-spire-system
+  labels:
+    {{- include "spire.labels" . | nindent 4 }}
+    apiserver-access: enabled
+  # TODO: remove when done with testing to avoid accidentally deleting the database
+  annotations:
+    nais.io/postgresqlDeleteResource: "true"
+spec:
+  teamId: {{ .Release.Namespace }}
+  volume:
+    size: "10Gi"
+    storageClass: "premium-rwo"
+  numberOfInstances: {{ .Values.database.replicas }}
+  patroni:
+{{- if gt (int .Values.database.replicas) 1 }}
+    synchronous_mode: true
+    synchronous_mode_strict: true
+{{- else }}
+    synchronous_mode: false
+    synchronous_mode_strict: false
+{{- end }}
+  preparedDatabases:
+    app:
+      defaultUsers: true
+      secretNamespace: spire-system
+      schemas:
+        public: {}
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: nais.io/type
+              operator: In
+              values:
+                - postgres
+  resources:
+    limits:
+      memory: "2Gi"
+    requests:
+      cpu: "100m"
+      memory: "200Mi"
+  postgresql:
+    version: "17"
+  spiloFSGroup: 103
+  spiloRunAsGroup: 103
+  spiloRunAsUser: 101
+  {{ end }}

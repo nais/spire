@@ -1,0 +1,183 @@
+# TODO: add egress netpol for spire-system ns, omitted for now to get stuff working
+# TODO: link gcp-service-account via terraform, done by click ops so far
+{{ if .Values.database.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    nais.io/type: postgres
+  name: pg-spire-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    iam.gke.io/gcp-service-account: postgres-pod@{{ .Values.projectID }}.iam.gserviceaccount.com
+  labels:
+    {{- include "spire.labels" . | nindent 4 }}
+  name: postgres-pod
+  namespace: pg-spire-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-pod-additional
+  namespace: pg-spire-system
+  labels:
+    {{- include "spire.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: postgres-pod-additional
+subjects:
+- kind: ServiceAccount
+  name: postgres-pod
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres
+  namespace: pg-spire-system
+  labels:
+    {{- include "spire.labels" . | nindent 4 }}
+spec:
+  egress:
+    - to: # Cluster pods
+        - podSelector:
+            matchLabels:
+              application: spilo
+  ingress:
+    - from: # Application pods
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: spire-system
+    - from: # Connection poooler
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: pg-spire-system
+          podSelector:
+            matchLabels:
+              application: db-connection-pooler
+    - from: # Cluster pods
+        - podSelector:
+            matchLabels:
+              application: spilo
+    - from: # Postgres operator
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nais-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres-operator
+    - from: # Prometheus scraping
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nais-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Egress
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-pooler
+  namespace: pg-spire-system
+  labels:
+    {{- include "spire.labels" . | nindent 4 }}
+spec:
+  egress:
+    - to: # Cluster pods
+        - podSelector:
+            matchLabels:
+              application: spilo
+  ingress:
+    - from: # Application pods
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: spire-system
+    - from: # Postgres operator
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nais-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres-operator
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler
+  policyTypes:
+    - Egress
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-allow-apiserver-and-dns
+  namespace: pg-spire-system
+spec:
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: {{ .Values.apiServerCIDR }}
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: node-local-dns
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+{{- if .Capabilities.APIVersions.Has "networking.gke.io/v1alpha3" }}
+apiVersion: networking.gke.io/v1alpha3
+kind: FQDNNetworkPolicy
+metadata:
+  name: postgres-pod-fqdn
+  namespace: pg-spire-system
+  annotations:
+    fqdnnetworkpolicies.networking.gke.io/aaaa-lookups: "skip"
+spec:
+  egress:
+    - ports:
+        - port: 80
+          protocol: TCP
+      to:
+        - fqdns:
+            - metadata.google.internal
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - fqdns:
+            - private.googleapis.com
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Egress
+{{- end }}
+{{- end }}

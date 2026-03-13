@@ -1,0 +1,106 @@
+name: main
+on:
+  push:
+    branches: [main]
+env:
+  HELM_VERSION: "3.10.2"
+  GOOGLE_REGISTRY: "europe-north1-docker.pkg.dev"
+jobs:
+  setup:
+    name: Setup
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changed-charts.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+      - name: Identify Charts
+        id: changed-charts
+        run: |-
+          to_release=("spire" "spire-crds")
+
+          SUFFIX="$(date +%Y%m%d%H%M%S)"
+          charts=()
+          for chart in "${to_release[@]}"; do
+            directory="charts/$chart"
+            orig_version=$(yq '.version' < "$directory/Chart.yaml")
+            # Using the original version as a prefix, add the time and date after a dash
+            # This will ensure that the version is unique
+            new_version="${orig_version}-$SUFFIX"
+            charts+=("$chart:$new_version")
+          done
+
+          DATA=$(jq --compact-output --null-input '[$ARGS.positional | unique | .[] | split(":") | {"name": .[0], "version": .[1]}]' --args -- "${charts[@]}")
+          echo "matrix=$DATA" >> "$GITHUB_OUTPUT"
+
+  build_push:
+    name: Build and push
+    needs:
+      - setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      actions: "read"
+      id-token: "write"
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.setup.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # ratchet:actions/checkout@v6
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193" # ratchet:google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.NAIS_IO_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: "gh-spire@nais-io.iam.gserviceaccount.com"
+          token_format: "access_token"
+
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # ratchet:azure/setup-helm@v4
+        name: "Setup Helm"
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Build Chart
+        id: build-chart
+        run: |-
+          directory="charts/${{ matrix.chart.name }}"
+
+          sed -i "s/^version: .*/version: ${{ matrix.chart.version }}/g" "$directory/Chart.yaml"
+
+          helm dependency update "$directory"
+          helm package "$directory" --destination .
+
+      - name: "Log in to Google Artifact Registry"
+        if: github.ref == 'refs/heads/main'
+        run: |-
+          echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin https://${{ env.GOOGLE_REGISTRY }}
+
+      - name: Push Chart
+        if: github.ref == 'refs/heads/main'
+        run: |-
+          chart="${{ matrix.chart.name }}-${{ matrix.chart.version }}".tgz
+          echo "Pushing: $chart"
+          helm push "$chart" oci://${{ env.GOOGLE_REGISTRY }}/nais-io/nais/feature
+
+  rollout:
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - build_push
+      - setup
+    runs-on: fasit-deploy
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJson(needs.setup.outputs.matrix) }}
+    steps:
+      - uses: nais/fasit-deploy@v3 # ratchet:nais/fasit-deploy@v3
+        with:
+          chart: oci://${{ env.GOOGLE_REGISTRY }}/nais-io/nais/feature/${{ matrix.chart.name }}
+          version: ${{ matrix.chart.version }}
+          target: '{"tenant":"dev-nais"}'

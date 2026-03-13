@@ -1,0 +1,35 @@
+environmentKinds:
+  - management
+  - tenant
+dependencies:
+  - allOf:
+      - spire-crds
+values:
+  global.spire.clusterName:
+    computed:
+      template: |
+        {{ .Env.name }}
+  global.spire.caSubject.commonName:
+    computed:
+      template: |
+        {{ subdomain . "spire" }}
+  global.spire.jwtIssuer:
+    computed:
+      template: |
+        {{ subdomain . "spire" }}
+  global.spire.trustDomain:
+    computed:
+      template: |
+        {{ .Tenant.Name }}.cloud.nais.io
+  upstream-spire.spiffe-oidc-discovery-provider.ingress.host:
+    computed:
+      template: |
+        {{ subdomain . "spire" }}
+  apiServerCIDR:
+    computed:
+      template: |
+        {{ .Env.apiserver_endpoint }}
+  projectID:
+    computed:
+      template: |
+        {{ .Env.project_id }}

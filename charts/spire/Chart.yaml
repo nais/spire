@@ -1,0 +1,14 @@
+apiVersion: v2
+name: spire
+description: A Helm chart for Spire - SPIFFE Runtime Environment
+sources:
+  - https://github.com/nais/helm-charts/tree/main/features/spire
+  - https://github.com/spiffe/helm-charts-hardened/tree/main/charts/spire
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: spire
+    version: "0.28.3"
+    repository: "https://spiffe.github.io/helm-charts-hardened/"
+    alias: upstream-spire

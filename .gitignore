@@ -1,0 +1,4 @@
+*.tgz
+Chart.lock
+.idea
+.agent-shell
