@@ -28,7 +28,7 @@ values:
   apiServerCIDR:
     computed:
       template: |
-        {{ .Env.apiserver_endpoint }}
+        {{ .Env.apiserver_endpoint }}/32
   projectID:
     computed:
       template: |
