@@ -42,7 +42,12 @@ upstream-spire:
           enabled: true
           name: app-owner-user.spire.credentials.postgresql.acid.zalan.do
           key: "password"
+    keyManager:
+      disk:
+        enabled: false
     kind: deployment
+    persistence:
+      type: emptyDir
     podAnnotations:
       reloader.stakater.com/auto: "true"
     tornjak:
