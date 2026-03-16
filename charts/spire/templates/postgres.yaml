@@ -9,7 +9,7 @@ metadata:
     apiserver-access: enabled
   # TODO: remove when done with testing to avoid accidentally deleting the database
   annotations:
-    nais.io/postgresqlDeleteResource: "spire"
+    nais.io/postgresqlDeleteResource: {{ include "spire.fullname" . | quote }} # must match database cluster name
 spec:
   teamId: {{ .Release.Namespace }}
   volume:
