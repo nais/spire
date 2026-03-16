@@ -2,7 +2,7 @@ apiVersion: v2
 name: spire-crds
 description: A Helm chart for Spire CRDs
 sources:
-  - https://github.com/nais/helm-charts/tree/main/features/spire-crds
+  - https://github.com/nais/spire/tree/main/charts/spire-crds
   - https://github.com/spiffe/helm-charts-hardened/tree/main/charts/spire-crds
 type: application
 version: 0.1.0
