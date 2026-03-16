@@ -4,6 +4,7 @@ environmentKinds:
 dependencies:
   - allOf:
       - spire-crds
+timeout: 15m
 values:
   global.spire.clusterName:
     computed:
