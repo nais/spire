@@ -20,6 +20,9 @@ global:
     trustDomain: # dev-nais.cloud.nais.io; mapped by fasit
 upstream-spire:
   spiffe-oidc-discovery-provider:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
     ingress:
       enabled: true
       className: nais-ingress
@@ -31,6 +34,7 @@ upstream-spire:
   spire-server:
     autoscaling:
       enabled: true
+      minReplicas: 2
     dataStore:
       sql:
         databaseType: postgres
@@ -46,10 +50,10 @@ upstream-spire:
       disk:
         enabled: false
       memory:
-        enabled: true
+        enabled: true # must be memory when kind=deployment
     kind: deployment
     persistence:
-      type: emptyDir
+      type: emptyDir # must be emptyDir when kind=deployment
     podAnnotations:
       reloader.stakater.com/auto: "true"
     tornjak:
