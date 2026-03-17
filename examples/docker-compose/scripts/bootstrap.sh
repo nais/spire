@@ -26,4 +26,11 @@ if [ -z "$TOKEN" ]; then
 fi
 
 printf '%s' "$TOKEN" > "$TOKEN_PATH"
+
+echo "Registering workload..."
+/opt/spire/bin/spire-server entry create \
+    -spiffeID "spiffe://example.nais.io/workload/go-client" \
+    -parentID "$AGENT_SPIFFE_ID" \
+    -selector "unix:uid:0"
+
 echo "Bootstrap complete."

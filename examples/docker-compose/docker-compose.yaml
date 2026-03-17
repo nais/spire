@@ -27,6 +27,8 @@ services:
     entrypoint: [ "/bin/sh", "/opt/spire/scripts/bootstrap.sh" ]
 
   spire-agent:
+    pid: "host"
+    privileged: true
     build:
       context: .
       no_cache: true
@@ -41,11 +43,12 @@ services:
       spire-bootstrap:
         condition: service_completed_successfully
     hostname: spire-agent
-    restart: always
+    restart: on-failure
     volumes:
       - ./config/agent:/opt/spire/conf/agent
       - spire-bootstrap:/opt/spire/bootstrap
       - /var/run/:/var/run/
+      - spire-workload-socket:/opt/spire/sockets
     entrypoint:
       - /bin/sh
       - -ec
@@ -57,7 +60,29 @@ services:
         exec /opt/spire/bin/spire-agent run \
           -config /opt/spire/conf/agent/agent.conf \
           -joinToken "$(cat /opt/spire/bootstrap/join.token)"
+  workload-go-client:
+    build:
+      context: ../workload-go-client
+    environment:
+      - SPIFFE_ENDPOINT_SOCKET=unix:///opt/spire/sockets/workload_api.sock
+      - SERVER_URL=http://workload-go-server:8082 # Update this
+    volumes:
+      - spire-workload-socket:/opt/spire/sockets
+    depends_on:
+      - spire-agent
+      - workload-go-server
+    restart: on-failure
+  workload-go-server:
+    build:
+      context: ../workload-go-server
+    environment:
+      - SPIFFE_ENDPOINT_SOCKET=unix:///opt/spire/sockets/workload_api.sock
+    volumes:
+      - spire-workload-socket:/opt/spire/sockets
+    depends_on:
+      - spire-agent
 
 volumes:
   spire-bootstrap:
   spire-server-socket:
+  spire-workload-socket:
