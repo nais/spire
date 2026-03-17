@@ -1,6 +1,6 @@
 services:
   spire-server:
-    image: ghcr.io/spiffe/spire-server:1.11.2
+    image: ghcr.io/spiffe/spire-server:1.14.2
     hostname: spire-server
     volumes:
       - ./config/server:/opt/spire/conf/server
