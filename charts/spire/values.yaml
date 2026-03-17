@@ -6,7 +6,7 @@ global:
       commonName: # spire.dev-nais.nais.io; mapped by fasit
     clusterName: management
     ingressControllerType: "other"
-    jwtIssuer: # spire.dev-nais.cloud.nais.io; mapped by fasit
+    jwtIssuer: # https://spire.dev-nais.cloud.nais.io; mapped by fasit
     namespaces:
       create: false
       system:

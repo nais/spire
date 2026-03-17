@@ -17,7 +17,7 @@ values:
   global.spire.jwtIssuer:
     computed:
       template: |
-        {{ subdomain . "spire" }}
+        https://{{ subdomain . "spire" }}
   global.spire.trustDomain:
     computed:
       template: |
