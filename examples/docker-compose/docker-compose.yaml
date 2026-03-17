@@ -1,0 +1,63 @@
+services:
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.11.2
+    hostname: spire-server
+    volumes:
+      - ./config/server:/opt/spire/conf/server
+      - spire-bootstrap:/opt/spire/bootstrap
+      - spire-server-socket:/tmp/spire-server/private
+    command: ["-config", "/opt/spire/conf/server/server.conf"]
+
+  spire-bootstrap:
+    build:
+      no_cache: true
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/spiffe/spire-server:1.14.2 AS spire
+        FROM alpine:3.20
+        RUN apk add --no-cache ca-certificates tzdata
+        COPY --from=spire /opt/spire /opt/spire
+        ENTRYPOINT ["/opt/spire/bin/spire-server"]
+    depends_on:
+      - spire-server
+    volumes:
+      - ./scripts:/opt/spire/scripts
+      - spire-bootstrap:/opt/spire/bootstrap
+      - spire-server-socket:/tmp/spire-server/private
+    entrypoint: [ "/bin/sh", "/opt/spire/scripts/bootstrap.sh" ]
+
+  spire-agent:
+    build:
+      context: .
+      no_cache: true
+      dockerfile_inline: |
+        FROM ghcr.io/spiffe/spire-agent:1.14.2 AS spire
+        FROM alpine:3.20
+        RUN apk add --no-cache ca-certificates tzdata
+        COPY --from=spire /opt/spire /opt/spire
+        
+        ENTRYPOINT ["/opt/spire/bin/spire-agent"]
+    depends_on:
+      spire-bootstrap:
+        condition: service_completed_successfully
+    hostname: spire-agent
+    restart: always
+    volumes:
+      - ./config/agent:/opt/spire/conf/agent
+      - spire-bootstrap:/opt/spire/bootstrap
+      - /var/run/:/var/run/
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        until [ -s /opt/spire/bootstrap/join.token ] && [ -s /opt/spire/bootstrap/bootstrap.crt ]; do
+          echo "waiting for bootstrap artifacts..."
+          sleep 1
+        done
+        exec /opt/spire/bin/spire-agent run \
+          -config /opt/spire/conf/agent/agent.conf \
+          -joinToken "$(cat /opt/spire/bootstrap/join.token)"
+
+volumes:
+  spire-bootstrap:
+  spire-server-socket:

@@ -2,3 +2,7 @@
 Chart.lock
 .idea
 .agent-shell
+/charts/spire/charts/values.local.yaml
+/charts/spire/values.local.yaml
+/spire-tutorials/
+/charts/spire/out/
