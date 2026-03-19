@@ -2,6 +2,8 @@
 
 Proof-of-concept for evaluating [SPIRE](https://spiffe.io/docs/latest/spire-about/) (the SPIFFE Runtime Environment), which is the reference implementation of the [SPIFFE](https://spiffe.io/docs/latest/spiffe-about/overview/) (Secure Production Identity Framework For Everyone) standard for workload identity.
 
+**TL;DR**: SPIRE is overkill for our Kubernetes-only platform. Native [bound service account tokens](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#bound-service-account-tokens) already provide short-lived, audience-scoped JWTs with OIDC validation. For X.509/mTLS needs, [Pod Certificates (KEP-4317)](https://github.com/kubernetes/enhancements/blob/master/keps/sig-auth/4317-pod-certificates/README.md) offers a native path forward (beta in Kubernetes 1.35). Both avoid the operational overhead of running SPIRE Server, Agent, and CSI Driver.
+
 ## Contents
 
 - [Helm charts](charts/) for deploying a production-grade SPIRE infrastructure on Kubernetes (using the [official hardened Helm charts](https://spiffe.io/docs/latest/spire-helm-charts-hardened-about/))
