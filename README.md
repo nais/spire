@@ -28,7 +28,7 @@ This setup uses the default SPIRE architecture from the official Helm charts: on
 
 Workloads within the same cluster can authenticate to each other using either X.509-SVIDs (mTLS) or JWT-SVIDs.
 
-Cross-cluster authentication is not possible with mTLS since the clusters have separate trust domains. Instead, cross-cluster communication uses OIDC federation: a workload in cluster A obtains a JWT-SVID from its local SPIRE Agent and presents it to a workload in cluster B, which validates it against cluster A's public keys via the OIDC discovery endpoint.
+Without trust-bundle federation, workloads in these clusters cannot authenticate each other using SPIFFE mTLS. For cross-cluster communication, a workload in cluster A can instead present a JWT-SVID to a workload in cluster B, which validates it against cluster A's public keys via the OIDC discovery endpoint.
 
 This is the architecture we would most likely adopt.
 
@@ -54,14 +54,14 @@ This is the architecture we would most likely adopt.
 ## Concerns
 
 - Complex operational footprint with many moving parts: SPIRE Server, Controller Manager, Agent DaemonSet, and CSI Driver
-- The official Helm charts are still under active development as of this writing. A respective amount of effort has been put into these charts, but they do sharp edges out of the box.
+- The official Helm charts are still under active development as of this writing. Considerable effort has gone into these charts, but they still have sharp edges out of the box.
   - Default values do not prescribe a production-ready setup. High availability requires additional configuration.
   - See https://github.com/spiffe/helm-charts-hardened/issues/342 as an example.
-- Required end-to-end mTLS between SPIRE components limits options for exposing federation endpoints out via an ingress and load balancers
+- Required end-to-end mTLS between SPIRE components limits options for exposing federation endpoints through an ingress or load balancer
 - Requires privileged node access (Agent DaemonSet with `hostPID` and `hostNetwork`)
 - JWT-SVIDs have minimal, non-customizable claims (unless a custom CredentialComposer plugin is implemented)
-- SPIFFE identites is ultimately tied to a Kubernetes Service Account referenced by the workload.
-  - Workload identities are again attested by an Agent that bootstraps and attests itself with the SPIRE Server by using its own Kubernetes Service Account Token. 
+- In this setup, SPIFFE identities are tied to the Kubernetes service accounts used by the workloads.
+  - The SPIRE Agent uses its own Kubernetes service account token to attest itself to the SPIRE Server, then attests workloads.
   - This makes the additional layers of indirection questionable when our platform and its workloads exclusively run on Kubernetes.
 
 ## Evaluation
@@ -72,7 +72,7 @@ SPIRE is overkill for our use cases. Its primary value proposition, platform-agn
 
 Kubernetes already provides a native equivalent through [bound service account tokens](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#bound-service-account-tokens) and [service account token volume projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection):
 
-- **Bound tokens**: Short-lived JWTs issued by the API server, automatically rotated by the kubelet, and tied to the lifecycle of the pod. They expire when the pod is deleted.
+- **Bound tokens**: Short-lived JWTs issued by the API server and automatically rotated by the kubelet. Kubernetes rejects a pod-bound token after its pod is deleted, but an external service that validates the JWT offline cannot detect the deletion and must rely on the token's expiration.
 - **Token volume projection**: Automatically mounts these tokens into pods with configurable audiences and expiration times.
 - **OIDC discovery**: Endpoints (`/.well-known/openid-configuration` and `/openid/v1/jwks`) allow external services to validate these tokens without direct access to the Kubernetes API.
 
@@ -214,4 +214,4 @@ Such concerns could be solved by OIDC federation through a dedicated Security To
 - SPIFFE JWT SVIDs
 - OpenID Connect ID tokens from any compliant provider
 
-If we need mTLS or X.509 certificate-based workload identity in the future, Pod Certificates (KEP-4317) provides a native Kubernetes path forward without requiring a full SPIRE deployment.
+If we need mTLS or X.509 certificate-based workload identity in the future, Pod Certificates (KEP-4317) provide a native Kubernetes path forward without requiring a full SPIRE deployment.
